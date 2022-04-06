@@ -1,18 +1,20 @@
-using ModelingToolkit, MethodOfLines, OrdinaryDiffEq, DomainSets, Plots
+using ModelingToolkit, MethodOfLines, OrdinaryDiffEq, DomainSets
+using Plots
 
 @parameters x y t
 @variables so2(..) so4(..)
 Dt = Differential(t)
 Dx = Differential(x)
 Dy = Differential(y)
-Dxx = Differential(x)^2
-Dyy = Differential(y)^2
-
-∇²(u) = Dxx(u) + Dyy(u)
 
 x_min = y_min = t_min = 0.0
 x_max = y_max = 1.0
 t_max = 11.5
+
+N = 32
+
+dx = (x_max-x_min)/N
+dy = (y_max-y_min)/N
 
 islocation(x, y) = x > x_max / 2 - dx && x < x_max / 2 + dx && y > y_max / 10 - dx && y < y_max / 10 + dx
 emission(x, y, emisrate) = ifelse(islocation(x, y), emisrate, 0)
@@ -21,11 +23,13 @@ emisrate = 10.0;
 
 
 u = 1.0
-v = -1.0
+v = 1.0
+
+k = 0.01 # Reaction rate
 
 eq = [
-    Dt(so2(x,y,t)) ~ u*Dx(so2(x,y,t)) + v*Dy(so2(x,y,t)) + emission(x, y, emisrate),
-    Dt(so4(x,y,t)) ~ u*Dx(so4(x,y,t)) + v*Dy(so4(x,y,t)) + emission(x, y, emisrate),
+    Dt(so2(x,y,t)) ~ u*Dx(so2(x,y,t)) + v*Dy(so2(x,y,t)) + emission(x, y, emisrate) - k*so2(x,y,t),
+    Dt(so4(x,y,t)) ~ u*Dx(so4(x,y,t)) + v*Dy(so4(x,y,t)) + k*so2(x,y,t),
 ]
 
 domains = [x ∈ Interval(x_min, x_max),
@@ -33,21 +37,16 @@ domains = [x ∈ Interval(x_min, x_max),
               t ∈ Interval(t_min, t_max)]
 
 # Periodic BCs
-bcs = [so2(x,y,0) ~ 0.0,
-       so2(0,y,t) ~ so2(1,y,t),
-       so2(x,0,t) ~ so2(x,1,t),
+bcs = [so2(x,y,t_min) ~ 0.0,
+       so2(x_min,y,t) ~ so2(x_max,y,t),
+       so2(x,y_min,t) ~ so2(x,y_max,t),
 
-       so4(x,y,0) ~ 0.0,
-       so4(0,y,t) ~ so4(1,y,t),
-       so4(x,0,t) ~ so4(x,1,t),
+       so4(x,y,t_min) ~ 0.0,
+       so4(x_min,y,t) ~ so4(x_max,y,t),
+       so4(x,y_min,t) ~ so4(x,y_max,t),
 ] 
 
 @named pdesys = PDESystem(eq,bcs,domains,[x,y,t],[so2(x,y,t), so4(x,y,t)])
-
-N = 32
-
-dx = 1/N
-dy = 1/N
 
 order = 2
 
@@ -60,6 +59,7 @@ println("Discretization:")
 println("Solve:")
 @time sol = solve(prob, TRBDF2(), saveat=0.1)
 
+
 discrete_x = x_min:dx:x_max
 discrete_y = y_min:dy:y_max
 
@@ -70,9 +70,8 @@ Ny = floor(Int64, (y_max - y_min) / dy) + 1
 @variables so4[1:Nx,1:Ny](t)
 
 anim = @animate for k in 1:length(sol.t)
-    solso2 = reshape([sol[so2[(i-1)*Ny+j]][k] for i in 1:Nx for j in 1:Ny],(Nx,Ny))
-    solso4 = reshape([sol[so4[(i-1)*Ny+j]][k] for i in 1:Nx for j in 1:Ny],(Nx,Ny))
-println(k)
+    solso2 = reshape([sol[so2[(i-1)*Ny+j]][k] for j in 1:Ny for i in 1:Nx],(Ny,Nx))
+    solso4 = reshape([sol[so4[(i-1)*Ny+j]][k] for j in 1:Ny for i in 1:Nx],(Ny,Nx))
 
     p1 = heatmap(solso2[2:end, 2:end], title="$(sol.t[k]) so2")#, clims=(0,5.0))
     p2 = heatmap(solso4[2:end, 2:end], title="$(sol.t[k]) so4")#, clims=(0,5.0))
