@@ -9,7 +9,7 @@ Dy = Differential(y)
 
 x_min = y_min = t_min = 0.0
 x_max = y_max = 1.0
-t_max = 11.5
+t_max = 7.0
 
 N = 32
 
@@ -19,17 +19,17 @@ dy = (y_max-y_min)/N
 islocation(x, y) = x > x_max / 2 - dx && x < x_max / 2 + dx && y > y_max / 10 - dx && y < y_max / 10 + dx
 emission(x, y, emisrate) = ifelse(islocation(x, y), emisrate, 0)
 @register emission(x, y, emisrate)
-emisrate = 10.0;
 
+# Circular winds.
+θ(x,y) = atan(y.-0.5, x.-0.5)
+u(x,y) =  -sin(θ(x,y))
+v(x,y) = cos(θ(x,y))
 
-u = 1.0
-v = 1.0
-
-k = 0.01 # Reaction rate
-
+emisrate=10.0
+k=0.01 # k is reaction rate
 eq = [
-    Dt(so2(x,y,t)) ~ u*Dx(so2(x,y,t)) + v*Dy(so2(x,y,t)) + emission(x, y, emisrate) - k*so2(x,y,t),
-    Dt(so4(x,y,t)) ~ u*Dx(so4(x,y,t)) + v*Dy(so4(x,y,t)) + k*so2(x,y,t),
+    Dt(so2(x,y,t)) ~ -u(x,y)*Dx(so2(x,y,t)) - v(x,y)*Dy(so2(x,y,t)) + emission(x, y, emisrate) - k*so2(x,y,t),
+    Dt(so4(x,y,t)) ~ -u(x,y)*Dx(so4(x,y,t)) - v(x,y)*Dy(so4(x,y,t)) + k*so2(x,y,t),
 ]
 
 domains = [x ∈ Interval(x_min, x_max),
@@ -48,9 +48,7 @@ bcs = [so2(x,y,t_min) ~ 0.0,
 
 @named pdesys = PDESystem(eq,bcs,domains,[x,y,t],[so2(x,y,t), so4(x,y,t)])
 
-order = 2
-
-discretization = MOLFiniteDifference([x=>dx, y=>dy], t, approx_order=order, grid_align=center_align)
+discretization = MOLFiniteDifference([x=>dx, y=>dy], t, approx_order=2, grid_align=center_align)
 
 # Convert the PDE problem into an ODE problem
 println("Discretization:")
@@ -59,7 +57,7 @@ println("Discretization:")
 println("Solve:")
 @time sol = solve(prob, TRBDF2(), saveat=0.1)
 
-
+# Plotting
 discrete_x = x_min:dx:x_max
 discrete_y = y_min:dy:y_max
 
@@ -73,8 +71,8 @@ anim = @animate for k in 1:length(sol.t)
     solso2 = reshape([sol[so2[(i-1)*Ny+j]][k] for j in 1:Ny for i in 1:Nx],(Ny,Nx))
     solso4 = reshape([sol[so4[(i-1)*Ny+j]][k] for j in 1:Ny for i in 1:Nx],(Ny,Nx))
 
-    p1 = heatmap(solso2[2:end, 2:end], title="$(sol.t[k]) so2")#, clims=(0,5.0))
-    p2 = heatmap(solso4[2:end, 2:end], title="$(sol.t[k]) so4")#, clims=(0,5.0))
-    plot(p1, p2)
+    p1 = heatmap(discrete_x, discrete_y, solso2[2:end, 2:end], title="t=$(sol.t[k]); so2")
+    p2 = heatmap(discrete_x, discrete_y, solso4[2:end, 2:end], title="t=$(sol.t[k]); so4")
+    plot(p1, p2, size=(1000,400))
 end
 gif(anim, "advection.gif", fps = 8)
