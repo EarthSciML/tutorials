@@ -1,12 +1,6 @@
 using ModelingToolkit, MethodOfLines, OrdinaryDiffEq, DomainSets
 using Plots
 
-@parameters x y t
-@variables so2(..) so4(..)
-Dt = Differential(t)
-Dx = Differential(x)
-Dy = Differential(y)
-
 x_min = y_min = t_min = 0.0
 x_max = y_max = 1.0
 t_max = 7.0
@@ -20,14 +14,20 @@ islocation(x, y) = x > x_max / 2 - dx && x < x_max / 2 + dx && y > y_max / 10 - 
 emission(x, y, emisrate) = ifelse(islocation(x, y), emisrate, 0)
 @register emission(x, y, emisrate)
 
-# Circular winds.
-θ(x,y) = atan(y.-0.5, x.-0.5)
-u(x,y) =  -sin(θ(x,y))
-v(x,y) = cos(θ(x,y))
-
 emisrate=10.0
 k=0.01 # k is reaction rate
+
+@parameters x y t
+@variables so2(..) so4(..)
+Dt = Differential(t)
+Dx = Differential(x)
+Dy = Differential(y)
+# Circular winds.
+θ(x,y) = atan(y.-0.5, x.-0.5)
+u(x,y) = -sin(θ(x,y))
+v(x,y) = cos(θ(x,y))
 eq = [
+    # Advection and reaction.
     Dt(so2(x,y,t)) ~ -u(x,y)*Dx(so2(x,y,t)) - v(x,y)*Dy(so2(x,y,t)) + emission(x, y, emisrate) - k*so2(x,y,t),
     Dt(so4(x,y,t)) ~ -u(x,y)*Dx(so4(x,y,t)) - v(x,y)*Dy(so4(x,y,t)) + k*so2(x,y,t),
 ]

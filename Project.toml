@@ -1,6 +1,11 @@
 [deps]
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 DomainSets = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
+EarthSciMLBase = "e53f1632-a13c-4728-9402-0c66d48804b0"
+GasChem = "58070593-4751-4c87-a5d1-63807d11d76c"
+IfElse = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 MethodOfLines = "94925ecb-adb7-4558-8ed8-f975c56a0bf4"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
